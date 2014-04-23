@@ -1,6 +1,8 @@
 from kadi import events
 from utilities import append_to_array, find_first_after, same_limits, heat_map, find_closest
 
+# a modification of old htr_dc.py that focuses on pitch dependency
+
 close('all')
 
 temp = 'PFDM202T'
