@@ -112,7 +112,7 @@ savefig('htr_pfdm202t_on_time_hist.png')
 
 figure(3)
 plot_cxctime(t_on, dur_each/60, 'r', alpha=.2, label='Range')
-plot_cxctime(t_days, dur/60, 'b', alpha=.5, label='Daily Mean')
+plot_cxctime(t_days[:-1], dur[:-1]/60, 'b', alpha=.5, label='Daily Mean')
 #omit last month in this case due to small sample size
 plot_cxctime(t_mos[:-1], dur_mo_mean[:-1]/60, 'k', label='Monthly Mean')
 plot_cxctime(t_event, ylim(),'r:')
@@ -123,7 +123,7 @@ savefig('htr_pfdm202t_on_time.png')
 
 figure(4)
 plot_cxctime(t_on[:-1], per_each/60, 'r', alpha=.2, label='Range')
-plot_cxctime(t_days, per/60, 'b', alpha=.5, label='Daily Mean')
+plot_cxctime(t_days[:-1], per[:-1]/60, 'b', alpha=.5, label='Daily Mean')
 #omit last month in this case due to small sample size
 plot_cxctime(t_mos[:-1], per_mo_mean[:-1]/60, 'k', label='Monthly Mean')
 plot_cxctime(t_event, ylim(),'r:')
@@ -134,19 +134,19 @@ savefig('htr_pfdm202t_period.png')
 
 figure(5)
 plot_cxctime(t_on[:-1], dc_each, 'r', alpha=.2, label='Range')
-plot_cxctime(t_days, dc, 'b', alpha=.5, label='Daily Mean')
+plot_cxctime(t_days[:-1], dc[:-1], 'b', alpha=.5, label='Daily Mean')
 #omit last month in this case due to small sample size
 plot_cxctime(t_mos[:-1], dc_mo_mean[:-1], 'k', label='Monthly Mean') 
+ylim([0,30])
 plot_cxctime(t_event, ylim(),'r:')
 title('FDM-2 Heater Duty Cycle')
 ylabel('%')
 legend(loc=0)
-ylim([0,30])
 legend(loc=0)
 savefig('htr_pfdm202t_duty_cycle.png')
 
 figure(6)
-plot_cxctime(t_days, on_freq, 'b', alpha=.3, label='Range')
+plot_cxctime(t_days[:-1], on_freq[:-1], 'b', alpha=.3, label='Range')
 #omit last month in this case due to small sample size
 plot_cxctime(t_mos[:-1], on_freq_mo_mean[:-1], 'k', label='Monthly Mean')
 plot_cxctime(t_event, ylim(),'r:')
@@ -155,7 +155,7 @@ legend(loc=0)
 savefig('htr_pfdm202t_on_freq.png')
 
 figure(7)
-plot_cxctime(t_days, on_time/3600, 'b', alpha=.3, label='Range')
+plot_cxctime(t_days[:-1], on_time[:-1]/3600, 'b', alpha=.3, label='Range')
 #omit last month in this case due to small sample size
 plot_cxctime(t_mos[:-1], on_time_mo_mean[:-1]/3600, 'k', label='Monthly Mean')
 plot_cxctime(t_event, ylim(),'r:')
@@ -165,7 +165,7 @@ legend(loc=0)
 savefig('htr_pfdm202t_acc_on_time.png')
 
 figure(8)
-plot_cxctime(t_days, acc_pwr, 'b', alpha=.3, label='Range')
+plot_cxctime(t_days[:-1], acc_pwr[:-1], 'b', alpha=.3, label='Range')
 #omit last month in this case due to small sample size
 plot_cxctime(t_mos[:-1], acc_pwr_mo_mean[:-1], 'k', label='Monthly Mean')
 plot_cxctime(t_event, ylim(),'r:')
@@ -183,3 +183,6 @@ print(str(t5 - t4) + ' - calendar bookkeeping')
 print(str(t6 - t5) + ' - compute stats')
 print(str(time.time() - t6) + ' - plots')
 
+#for i in range(3,9):
+#    figure(i)
+#    xlim([DateTime('2010:080').plotdate, DateTime('2010:105').plotdate])
