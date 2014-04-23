@@ -1,22 +1,28 @@
+import time
+
 from kadi import events
-from utilities import append_to_array, find_first_after, same_limits, heat_map
+from utilities import append_to_array, find_first_after, find_last_before, find_closest
 
 close('all')
+t0 = time.time()
 
+#inputs
 temp = 'PFDM202T'
 on_range = 56.5
 off_range = 64
-t_start = '2000:001'
-#t_stop = None
-t_stop = '2010:090'
+t_start = '2001:001'
+t_stop = '2010:100'
 
-#t_event = array([DateTime('2006:351:04:38:00.000').secs, 
-#                 DateTime('2006:351:04:38:00.000').secs])
+t_event = array([DateTime('2010:099:16:54:00.000').secs, 
+                 DateTime('2010:099:16:54:00.000').secs])
 
+#fetch data
 x = fetch.Msid(temp, t_start, t_stop)
 v = fetch.Msid('ELBV', t_start, t_stop, stat='5min')
-dt = diff(x.vals)
 
+#find htr on and off times
+t1 = time.time()
+dt = diff(x.vals)
 local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
              append_to_array(dt > 0., pos=-1, val=bool(0)))
 local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
@@ -29,106 +35,151 @@ htr_on = local_min & htr_on_range
 htr_off = local_max & htr_off_range
 
 #remove any incomplete heater cycles at end of timeframe
+t2 = time.time()
 last_off = nonzero(htr_off)[0][-1]
 htr_on[last_off:] = 0
 
 t_on = x.times[htr_on]
 t_off = x.times[htr_off]
 
-match_i = find_first_after(t_on, t_off)
+#find matching cycles
+match_i1 = find_first_after(t_on, t_off)
+t_off = unique(t_off[match_i1]) #removes duplicate "offs"
 
-dur = t_off[match_i] - t_on
+match_i2 = find_last_before(t_off, t_on)
+t_on = t_on[match_i2] #removes duplicate "ons"
 
-voltage_i = find_closest(t_on, v.times)
+#compute dur_eachation and power
+t3 = time.time()
+dur_each = t_off - t_on
+
+voltage_i = find_first_after(t_on, v.times)
 voltage = v.vals[voltage_i]
-pwr = voltage**2/40 * dur/3600 #W-hrs
+pwr = voltage**2/40 * dur_each/3600 #W-hrs
 
-#compute duty cycles by month
+#calendar bookkeeping
+t4 = time.time()
 on_dates = DateTime(t_on).iso
-on_yrs = [date[0:4] for date in on_dates]
-on_mos = [date[5:7] for date in on_dates]
-on_freq = zeros(168)
-on_time = zeros(168)
-acc_pwr = zeros(168)
-avg_on_time = zeros(168)
-dates = zeros(168)
-i = 0
-for yr in range(2000, 2014):
-    for mo in range(1,13):
-        yr_match = array([on_yr == str(yr) for on_yr in on_yrs])
-        mo_match = array([on_mo == str(mo).zfill(2) 
-                          for on_mo in on_mos])
-        on_freq[i] = sum(yr_match & mo_match)
-        on_time[i] = sum(dur[yr_match & mo_match])
-        acc_pwr[i] = sum(pwr[yr_match & mo_match])
-        avg_on_time[i] = mean(dur[yr_match & mo_match])
-        dates[i] = DateTime(str(yr) + '-' + str(mo).zfill(2) 
-                            + '-01 00:00:00.000').secs
-        i = i + 1
-dates_range = append(dates, DateTime('2014:001').secs)
-months_dur = dates_range[1:] - dates_range[:-1]
-dc = on_time / months_dur
+on_dates_days = floor(DateTime(t_on).mjd)
 
-figure(1)
-plot_cxctime(t_on, dur, 'b.', alpha=.05, mew=0)
-#plot_cxctime(t_event, ylim(),'r:')
-ylabel('On-Time Durations [sec]')
-title('FDM-2 Heater On-Time Durations')
-savefig('FDM2_1.png')
+days = arange(floor(DateTime(t_on[0]).mjd), DateTime(t_on[-1]).mjd)
+days_dates = DateTime(days, format='mjd').iso
+days_mos = array([date[0:7] for date in days_dates])
+mos = unique(days_mos)
 
-#figure(2)
+t_days = DateTime(days, format='mjd').secs
+t_mos = DateTime([mo + '-01 00:00:00.00' for mo in mos]).secs
+
+#compute stats
+t5 = time.time()
+on_freq = array([sum(on_dates_days == day) for day in days])
+on_freq_mo_mean = array([mean(on_freq[days_mos == mo]) for mo in mos])
+
+on_time = array([sum(dur_each[on_dates_days == day]) for day in days])
+on_time_mo_mean = array([mean(on_time[days_mos == mo]) for mo in mos])
+
+dur = array([mean(dur_each[on_dates_days == day]) for day in days])
+dur_mo_mean = array([mean(dur[days_mos == mo]) for mo in mos])
+
+acc_pwr = array([sum(pwr[on_dates_days == day]) for day in days])
+acc_pwr_mo_mean = array([mean(acc_pwr[days_mos == mo]) for mo in mos])
+
+per_each = diff(t_on)
+per = array([mean(per_each[on_dates_days[:-1] == day]) for day in days])
+per_mo_mean = array([mean(per[days_mos == mo]) for mo in mos])
+
+dc_each = dur_each[:-1] / per_each * 100
+dc = on_time / (3600*24) * 100
+dc_mo_mean = array([mean(dc[days_mos == mo]) for mo in mos])
+
+#plots
+t6 = time.time()
+
+#figure(1) - only plot for short timeframes when troubleshooting
 #plot_cxctime(x.times, x.vals, mew=0)
 #plot_cxctime(x.times, x.vals, 'b*',mew=0)
 #plot_cxctime(x.times[htr_on], x.vals[htr_on], 'c*',mew=0, label='Heater On')
 #plot_cxctime(x.times[htr_off], x.vals[htr_off], 'r*',mew=0, label='Heater Off')
 #plot_cxctime(t_event, ylim(),'r:')
-#legend()
+#legend(loc=0)
+
+figure(2)
+hist(dur_each/60, bins=100)
+ylabel('instances')
+xlabel('min')
+title('FDM-2 Heater On-Time Durations')
+savefig('htr_pfdm202t_on_time_hist.png')
 
 figure(3)
-hist(dur, bins=100, normed=True)
-#xlabel('On-Time Durations [sec]')
-title('FDM-2 Heater On-Time Durations')
-savefig('FDM2_3.png')
+plot_cxctime(t_on, dur_each/60, 'r', alpha=.2, label='Range')
+plot_cxctime(t_days, dur/60, 'b', alpha=.5, label='Daily Mean')
+#omit last month in this case due to small sample size
+plot_cxctime(t_mos[:-1], dur_mo_mean[:-1]/60, 'k', label='Monthly Mean')
+plot_cxctime(t_event, ylim(),'r:')
+title('FDM-2 Heater On-Time')
+ylabel('min')
+legend(loc=0)
+savefig('htr_pfdm202t_on_time.png')
 
 figure(4)
-plot_cxctime(t_on[:-1], dur[:-1]/diff(t_on)*100, 'k', alpha=.1)
-plot_cxctime(dates, dc*100, '*', mew=0)
-plot_cxctime(dates, dc*100, '-', mew=0)
-#plot_cxctime(t_event, ylim(),'r:')
-title('FDM-2 Heater Duty Cycle')
-ylabel('FDM-2 Heater Duty Cycle by Month [%] \n (Total On-time / Total Time)')
-legend(['Range', 'Monthly Mean'])
-ylim([0,40])
-savefig('FDM2_4.png')
+plot_cxctime(t_on[:-1], per_each/60, 'r', alpha=.2, label='Range')
+plot_cxctime(t_days, per/60, 'b', alpha=.5, label='Daily Mean')
+#omit last month in this case due to small sample size
+plot_cxctime(t_mos[:-1], per_mo_mean[:-1]/60, 'k', label='Monthly Mean')
+plot_cxctime(t_event, ylim(),'r:')
+title('FDM-2 Heater Period')
+ylabel('min')
+legend(loc=0)
+savefig('htr_pfdm202t_period.png')
 
 figure(5)
-plot_cxctime(dates, on_freq * (30.4375*3600*24 / months_dur), '*', mew=0)
-plot_cxctime(dates, on_freq * (30.4375*3600*24 / months_dur), '-', mew=0)
-#plot_cxctime(t_event, ylim(),'r:')
-title('FDM-2 Heater Cycling Frequency')
-ylabel('Heater Cycles per Month (Normalized)')
-savefig('FDM2_5.png')
+plot_cxctime(t_on[:-1], dc_each, 'r', alpha=.2, label='Range')
+plot_cxctime(t_days, dc, 'b', alpha=.5, label='Daily Mean')
+#omit last month in this case due to small sample size
+plot_cxctime(t_mos[:-1], dc_mo_mean[:-1], 'k', label='Monthly Mean') 
+plot_cxctime(t_event, ylim(),'r:')
+title('FDM-2 Heater Duty Cycle')
+ylabel('%')
+legend(loc=0)
+ylim([0,30])
+legend(loc=0)
+savefig('htr_pfdm202t_duty_cycle.png')
 
 figure(6)
-plot_cxctime(dates, on_time/3600 * (30.4375*3600*24 / months_dur), '*', mew=0)
-plot_cxctime(dates, on_time/3600 * (30.4375*3600*24 / months_dur), '-', mew=0)
-#plot_cxctime(t_event, ylim(),'r:')
-title('FDM-2 Heater On-Time')
-ylabel('Heater On-Time by Month (Normalized) [hrs]')
-savefig('FDM2_6.png')
+plot_cxctime(t_days, on_freq, 'b', alpha=.3, label='Range')
+#omit last month in this case due to small sample size
+plot_cxctime(t_mos[:-1], on_freq_mo_mean[:-1], 'k', label='Monthly Mean')
+plot_cxctime(t_event, ylim(),'r:')
+title('FDM-2 Heater Cycles Per Day')
+legend(loc=0)
+savefig('htr_pfdm202t_on_freq.png')
 
 figure(7)
-plot_cxctime(dates, avg_on_time/3600, '*', mew=0)
-plot_cxctime(dates, avg_on_time/3600, '-', mew=0)
-#plot_cxctime(t_event, ylim(),'r:')
-title('FDM-2 Heater Average On-Time')
-ylabel('Mean Heater On-Time by Month [hrs]')
-savefig('FDM2_7.png')
+plot_cxctime(t_days, on_time/3600, 'b', alpha=.3, label='Range')
+#omit last month in this case due to small sample size
+plot_cxctime(t_mos[:-1], on_time_mo_mean[:-1]/3600, 'k', label='Monthly Mean')
+plot_cxctime(t_event, ylim(),'r:')
+title('FDM-2 Accumulated Heater On-Time Per Day')
+ylabel('hrs')
+legend(loc=0)
+savefig('htr_pfdm202t_acc_on_time.png')
 
 figure(8)
-plot_cxctime(dates, acc_pwr * (30.4375*3600*24 / months_dur), '*', mew=0)
-plot_cxctime(dates, acc_pwr * (30.4375*3600*24 / months_dur), '-', mew=0)
-#plot_cxctime(t_event, ylim(),'r:')
-title('FDM-2 Accumulated Heater Power')
-ylabel('Accumulated Heater Power by Month \n (Normalized) [W-hrs]')
-savefig('FDM2_8.png')
+plot_cxctime(t_days, acc_pwr, 'b', alpha=.3, label='Range')
+#omit last month in this case due to small sample size
+plot_cxctime(t_mos[:-1], acc_pwr_mo_mean[:-1], 'k', label='Monthly Mean')
+plot_cxctime(t_event, ylim(),'r:')
+title('FDM-2 Accumulated Heater Power Per Day')
+ylabel('W-hrs')
+legend(loc=0)
+savefig('htr_pfdm202t_acc_pwr.png')
+
+print('Processing times:')
+print(str(t1 - t0) + ' - fetching data')
+print(str(t2 - t1) + ' - find htr on and off times')
+print(str(t3 - t2) + ' - find matching cycles')
+print(str(t4 - t3) + ' - compute dur_each and power')
+print(str(t5 - t4) + ' - calendar bookkeeping')
+print(str(t6 - t5) + ' - compute stats')
+print(str(time.time() - t6) + ' - plots')
+
