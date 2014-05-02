@@ -16,8 +16,8 @@ def find_rough_cycles(x, on_range, off_range):
     
     #find min and max times
     dt = diff(x.vals)
-    local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
-                 append_to_array(dt > 0., pos=-1, val=bool(0)))
+    local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
+                 append_to_array(dt >= 0., pos=-1, val=bool(0)))
     local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
                  append_to_array(dt < 0., pos=-1, val=bool(0)))
     
@@ -218,6 +218,11 @@ xlabel('Sec')
 ylabel('Occurrences')
 xlim([-120,120])
 ylim([0,500])
+
+figure(8)
+plot(t_on[:-1], diff(t_on)/60)
+title('Heater Period')
+ylabel('min')
 
 print('Processing times:')
 print(str(time1 - time0) + ' - fetching data')

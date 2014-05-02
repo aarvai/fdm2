@@ -8,10 +8,10 @@ t0 = time.time()
 
 #inputs
 temp = 'PLINE08T'
-on_range = 57
+on_range = 56
 off_range = 72
-t_start = '2010:001'
-t_stop = '2010:100'
+t_start = '2001:090'
+t_stop = '2001:100'
 
 t_event = array([DateTime('2010:099:16:54:00.000').secs, 
                  DateTime('2010:099:16:54:00.000').secs])
@@ -23,8 +23,8 @@ v = fetch.Msid('ELBV', t_start, t_stop, stat='5min')
 #find htr on and off times
 t1 = time.time()
 dt = diff(x.vals)
-local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
-             append_to_array(dt > 0., pos=-1, val=bool(0)))
+local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
+             append_to_array(dt >= 0., pos=-1, val=bool(0)))
 local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
              append_to_array(dt < 0., pos=-1, val=bool(0)))
 
@@ -48,6 +48,9 @@ t_off = unique(t_off[match_i1]) #removes duplicate "offs"
 
 match_i2 = find_last_before(t_off, t_on)
 t_on = t_on[match_i2] #removes duplicate "ons"
+
+htr_on = find_closest(t_on, x.times)
+htr_off = find_closest(t_off, x.times)
 
 #compute dur_eachation and power
 t3 = time.time()
@@ -95,13 +98,13 @@ dc_mo_mean = array([mean(dc[days_mos == mo]) for mo in mos])
 #plots
 t6 = time.time()
 
-#figure(1) - only plot for short timeframes when troubleshooting
-#plot_cxctime(x.times, x.vals, mew=0)
-#plot_cxctime(x.times, x.vals, 'b*',mew=0)
-#plot_cxctime(x.times[htr_on], x.vals[htr_on], 'c*',mew=0, label='Heater On')
-#plot_cxctime(x.times[htr_off], x.vals[htr_off], 'r*',mew=0, label='Heater Off')
-#plot_cxctime(t_event, ylim(),'r:')
-#legend(loc=0)
+figure(1) #- only plot for short timeframes when troubleshooting
+plot_cxctime(x.times, x.vals, mew=0)
+plot_cxctime(x.times, x.vals, 'b*',mew=0)
+plot_cxctime(x.times[htr_on], x.vals[htr_on], 'c*',mew=0, label='Heater On')
+plot_cxctime(x.times[htr_off], x.vals[htr_off], 'r*',mew=0, label='Heater Off')
+plot_cxctime(t_event, ylim(),'r:')
+legend(loc=0)
 
 figure(2)
 hist(dur_each/60, bins=100)

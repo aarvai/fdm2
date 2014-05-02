@@ -23,8 +23,8 @@ v = fetch.Msid('ELBV', t_start, t_stop, stat='5min')
 #find htr on and off times
 t1 = time.time()
 dt = diff(x.vals)
-local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
-             append_to_array(dt > 0., pos=-1, val=bool(0)))
+local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
+             append_to_array(dt >= 0., pos=-1, val=bool(0)))
 local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
              append_to_array(dt < 0., pos=-1, val=bool(0)))
 
