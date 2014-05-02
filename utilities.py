@@ -86,15 +86,6 @@ def read_MCC_results(table):
         line_num = line_num + 1
     return t, predicts, actuals
 
-def find_closest_unsorted(a, b):
-    """This function returns an array of length a with the indices of 
-    array b that are closest to the values of array a.
-    """
-    a = np.atleast_1d(np.array(a))
-    b = np.atleast_1d(np.array(b))
-    out = [np.argmin(abs(b - a1)) for a1 in a]
-    return out
-
 def find_last_before(a, b):
     """This function returns an array of length a with the indices of 
     array b that are closest without going over the values of array a.
@@ -118,21 +109,7 @@ def find_closest(a, b):
     """
     idx = np.array([(np.abs(b-a_i)).argmin() for a_i in a])
     return idx
-
-def find_closest_bad(a, b):
-    """This function returns an array of length a with the indices of 
-    array b that are closest to the values of array a.
-    (Assumes b is sorted by magnitude.)
-    """
-    lb_i = find_last_before(a,b)
-    fa_i = find_first_after(a,b)
-    lb = np.abs(b[lb_i] - a)
-    fa = np.abs(b[fa_i] - a)
-    i = np.array([lb_i, fa_i]).T
-    min_i = np.argmin(np.array([lb, fa]), axis=0)
-    out = i[min_i]
-    return out  
-    
+   
 def append_rss(A):
     """This function appends the squareroot of the sum of the squares
     of all the other values in each row.  
