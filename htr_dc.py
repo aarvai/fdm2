@@ -3,7 +3,7 @@ import time
 from kadi import events
 from utilities import append_to_array, find_first_after, find_last_before, find_closest
 
-def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None, event=None):
+def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None, event=None, plot_cycles=False):
     
     close('all')
     t0 = time.time()    
@@ -15,10 +15,10 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     #find htr on and off times
     t1 = time.time()
     dt = diff(x.vals)
-    local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
-                 append_to_array(dt >= 0., pos=-1, val=bool(0)))
+    local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
+                 append_to_array(dt > 0., pos=-1, val=bool(0)))
     local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
-                     append_to_array(dt < 0., pos=-1, val=bool(0)))
+                 append_to_array(dt < 0., pos=-1, val=bool(0)))
     
     htr_on_range = x.vals < on_range
     htr_off_range = x.vals > off_range
@@ -40,8 +40,12 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     
     match_i2 = find_last_before(t_off, t_on)
     t_on = t_on[match_i2] #removes duplicate "ons"
-        
-    #compute dur_eachation and power
+    
+    if plot_cycles == True:    #time-intensive, not used if not plotting
+        htr_on = find_closest(t_on, x.times) 
+        htr_off = find_closest(t_off, x.times)
+    
+    #compute duration and power
     t3 = time.time()
     dur_each = t_off - t_on
     
@@ -89,14 +93,15 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     
     t_event = array([DateTime(event).secs, DateTime(event).secs])
     
-    #figure(1) - only plot for short timeframes when troubleshooting
-    #plot_cxctime(x.times, x.vals, mew=0)
-    #plot_cxctime(x.times, x.vals, 'b*',mew=0)
-    #plot_cxctime(x.times[htr_on], x.vals[htr_on], 'c*',mew=0, label='Heater On')
-    #plot_cxctime(x.times[htr_off], x.vals[htr_off], 'r*',mew=0, label='Heater Off')
-    #plot_cxctime(t_event, ylim(),'r:')
-    #legend(loc=0)
-    #title(name + ' Heater Cycling per ' + temp)
+    if plot_cycles == True:
+        figure(1) #- only plot for short timeframes when troubleshooting
+        plot_cxctime(x.times, x.vals, mew=0)
+        plot_cxctime(x.times, x.vals, 'b*',mew=0)
+        plot_cxctime(x.times[htr_on], x.vals[htr_on], 'c*',mew=0, label='Heater On')
+        plot_cxctime(x.times[htr_off], x.vals[htr_off], 'r*',mew=0, label='Heater Off')
+        plot_cxctime(t_event, ylim(),'r:')
+        legend(loc=0)
+        title(name + ' Heater Cycling per ' + temp)
     
     figure(2)
     hist(dur_each/60, bins=100)
@@ -153,7 +158,7 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     #omit last month in this case due to small sample size
     plot_cxctime(t_mos[:-1], on_time_mo_mean[:-1]/3600, 'k', label='Monthly Mean')
     plot_cxctime(t_event, ylim(),'r:')
-    title(name + ' Accumulated Heater On-Time Per Day')
+    title('Accumulated ' + name + ' Heater On-Time Per Day')
     ylabel('hrs')
     legend(loc=0)
     savefig('htr_' + temp + '_acc_on_time.png')
@@ -163,7 +168,7 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     #omit last month in this case due to small sample size
     plot_cxctime(t_mos[:-1], acc_pwr_mo_mean[:-1], 'k', label='Monthly Mean')
     plot_cxctime(t_event, ylim(),'r:')
-    title(name + ' Accumulated Heater Power Per Day')
+    title('Accumulated ' + name + ' Heater Power Per Day')
     ylabel('W-hrs')
     legend(loc=0)
     savefig('htr_' + temp + '_acc_pwr.png')
