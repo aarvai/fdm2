@@ -16,8 +16,8 @@ def find_rough_cycles(x, on_range, off_range):
     
     #find min and max times
     dt = diff(x.vals)
-    local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
-                 append_to_array(dt >= 0., pos=-1, val=bool(0)))
+    local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
+                 append_to_array(dt > 0., pos=-1, val=bool(0)))
     local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
                  append_to_array(dt < 0., pos=-1, val=bool(0)))
     
@@ -123,10 +123,12 @@ time4 = time.time()
 #on_rel_t2 = c.times[cand_on_i] - t_on_t2[on_match_i2]
 #off_rel_t1 = c.times[cand_off_i] - t_off_t1[off_match_i1] 
 #off_rel_t2 = c.times[cand_off_i] - t_off_t2[off_match_i2]
-
 t_on = mean(array([t_on_t1, t_on_t2]), axis=0)
 on_match_i = find_closest(c.times[cand_on_i], t_on)
 on_rel = c.times[cand_on_i] - t_on[on_match_i]
+within20 = (on_rel > -15) & (on_rel < 5)
+perc_t_on_w_hits = 100.0*len(unique(on_match_i[within20]))/len(t_on)
+print('Percentage of known heater-on-times with matching ELBI candidates:  ' + str(perc_t_on_w_hits) + '%')
 
 #plot
 time5 = time.time()
