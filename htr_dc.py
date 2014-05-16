@@ -15,18 +15,14 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     #find htr on and off times
     t1 = time.time()
     dt = diff(x.vals)
-    #account for dt==0
-    for i in range(1, len(dt)):
-        if dt[i] == 0:
-            if dt[i-1] < 0:
-                dt[i] = dt[i-1]
-    for i in range(len(dt)-2, -1, -1):
-        if dt[i] == 0:
-            dt[i] = dt[i+1]
-    local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
-                 append_to_array(dt > 0., pos=-1, val=bool(0)))
-    local_max = (append_to_array(dt > 0., pos=0, val=bool(0)) & 
-             append_to_array(dt < 0., pos=-1, val=bool(0)))
+    dt1_n0 = nonzero(dt)[0]
+    dt1 = dt[dt!=0]
+    local_min_i = nonzero((dt1[:-1] < 0.) & (dt1[1:] > 0.))[0]
+    local_max_i = nonzero((dt1[:-1] > 0.) & (dt1[1:] < 0.))[0]
+    local_min = zeros(len(x.vals), dtype='bool')
+    local_max = zeros(len(x.vals), dtype='bool')
+    local_min[dt1_n0[local_min_i+1]] = 1
+    local_max[dt1_n0[local_max_i]+1] = 1
     
     htr_on_range = x.vals < on_range
     htr_off_range = x.vals > off_range
