@@ -1,4 +1,4 @@
 *.pyc
 *.png
 *.jpg
-scrap.py
+scrap*.py
