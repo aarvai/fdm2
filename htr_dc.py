@@ -3,7 +3,7 @@ import time
 from kadi import events
 from utilities import append_to_array, find_first_after, find_last_before, find_closest
 
-def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None, event=None, plot_cycles=False):
+def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None, event=None, plot_cycles=False, dur_lim=None):
     
     close('all')
     t0 = time.time()    
@@ -15,8 +15,8 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     #find htr on and off times
     t1 = time.time()
     dt = diff(x.vals)
-    local_min = (append_to_array(dt <= 0., pos=0, val=bool(0)) & 
-                 append_to_array(dt > 0., pos=-1, val=bool(0)))
+    local_min = (append_to_array(dt < 0., pos=0, val=bool(0)) & 
+                 append_to_array(dt >= 0., pos=-1, val=bool(0)))
     local_max = (append_to_array(dt >= 0., pos=0, val=bool(0)) & 
                  append_to_array(dt < 0., pos=-1, val=bool(0)))
     
@@ -48,6 +48,14 @@ def htr_dc(temp, on_range, off_range, t_start='2000:001', t_stop=None, name=None
     #compute duration and power
     t3 = time.time()
     dur_each = t_off - t_on
+    
+    if dur_lim != None:
+        too_long = dur_each > dur_lim
+        t_on = t_on[~too_long]
+        t_off = t_off[~too_long]
+        htr_on = htr_on[~too_long]
+        htr_off = htr_off[~too_long]
+        dur_each = dur_each[~too_long]
     
     voltage_i = find_first_after(t_on, v.times)
     voltage = v.vals[voltage_i]
